@@ -1,5 +1,4 @@
-// Neoyandrak's kOS template file
-//RocketStage is used to chage between the rocket phases (ie. ignition, launch, orbit...)
+// RocketStage is used to chage between phases
 declare global RocketStage to 0. 
 DEFINE().
 
@@ -14,6 +13,8 @@ function Start {
 
 	//Declare OldThrust variable for autostage
 	declare global OldThrust to ship:availableThrust.
+	//Declare OriginalVector variable for maneuver calculation
+	declare global OriginalVector to -1.
 }
 
 function Main {
@@ -22,25 +23,32 @@ function Main {
 		AutoStage().
 
 		//Stage exit condition
-		if apoapsis >= 1000 {
+		if alt:radar >= 1000 {
 			RocketStageIncrement().
 		}
 	} else if RocketStage = 2 {
 		//Set inclination using curve 90 - (x^0.385)
 		lock targetPitch to 90-((alt:radar-1000)^0.385).
-		lock targetDirection to 90.
+		lock targetDirection to 0.
 		lock steering to heading(targetDirection, targetPitch).
+		AutoStage().
 
 		//Stage exit condition
 		if apoapsis >= 100000 {
 			RocketStageIncrement().
 		}
 	} else if RocketStage = 3 {
+		//Prepare rocket to start orbit
 		lock throttle to 0.
 		lock steering to prograde.
+		wait 1.
 		DoSafeStage().
-		ExecuteManuever(x, y, z, w).
 
+		//This stage doesn't have exit condition as it's only run once
+		RocketStageIncrement().
+	} else if RocketStage = 4 {
+		// TODO: Execute maneuver
+		
 		//Stage exit condition
 		if false {
 			RocketStageIncrement().
@@ -50,13 +58,19 @@ function Main {
 
 function MainGUI {
 	//Code here is used for the Console GUI
-	print "Fase " + RocketStage + ".".
+	print "Fase " + RocketStage.
 	if RocketStage = 1 {
 		print "Escapando de la atmósfera".
+		print "Altura:   " + floor(alt:radar).
+		print "Apoapsis: " + floor(apoapsis).
 	} else if RocketStage = 2 {
 		print "Iniciando trayectoria de giro".
+		print "Altura:   " + floor(alt:radar).
+		print "Apoapsis: " + floor(apoapsis).
 	} else if RocketStage = 3 {
-		print "Apopasis conseguida.".
+		print "Apoapsis conseguida".
+	} else if RocketStage = 4 {
+		print "Consiguiendo órbita".
 	}
 	
 }
@@ -84,43 +98,37 @@ function AutoStage {
 }
 
 function ExecuteManuever {
-	parameter utime, radial, normal, prograde.
-	local mnv is node (utime, radial, normal, prograde).
-	AddManueverToFlightPlan(mnv).
-	local StartTime is CalculateStartTime(mnv).
-	wait until StartTime - 10.
-	LockSteeringAtManeuverTarget(mnv).
-	wait until StartTime().
+	parameter utime, radial, normal, mnvprograde.
+	local mnv is node (utime, radial, normal, mnvprograde).
+	add mnv. //Add maneuver to Flight Plan
+	local StartTime is time:seconds + mnv:eta - ManueverBurnTime(mnv)/2. //Calculate start time
+	wait until time:seconds > StartTime - 10.
+	lock steering to mnv:burnvector. //Lock steering at maneuver target
+	wait until time:seconds > StartTime.
 	lock throttle to 1.
 	wait until IsManeuverComplete(mnv).
 	lock throttle to 0.
-	RemoveManeuverFromFlightPlan(mnv).
+	remove mnv. //Removes maneuver from Flight Plan
 }
 
-function AddManueverToFlightPlan {
+function ManeuverBurnTime {
 	parameter mnv.
 
-}
-
-function CalculateStartTime {
-	parameter mnv.
-
-	return 0.
-}
-
-function LockSteeringAtManeuverTarget {
-	parameter mnv.
-
+	return 10.
 }
 	
 function IsManeuverComplete {
 	parameter mnv.
+	if not(OriginalVector = -1){
+		set OriginalVector to mnv:burnvector.
+	}
+	local CurrentVector is mnv:burnvector.
 
-	return true.
-}
-
-function RemoveManeuverFromFlightPlan {
-	parameter mnv.
+	if vang(OriginalVector, CurrentVector) > 90 {
+		set OriginalVector to -1.
+		return true.
+	}
+	return false.
 }
 
 //DO NOT TOUCH THESE FUNCTIONS
