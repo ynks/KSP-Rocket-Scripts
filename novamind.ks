@@ -1,4 +1,6 @@
 // Neoyandrak's kOS template file
+//RocketStage is used to chage between the rocket phases (ie. ignition, launch, orbit...)
+declare global RocketStage to 0. 
 DEFINE().
 
 function Start {
@@ -6,19 +8,35 @@ function Start {
 
 	//Launch statement
 	lock throttle to 1.
+	lock steering to srfPrograde.
 	wait 1.
 	DoSafeStage().
 
 	//Ascent statement
 	//Sets inclination using curve 90 - (x^0.385)
-	lock targetPitch to 90-(alt:radar^0.385).
-	lock targetDirection to 90.
-	lock steering to heading(targetDirection, targetPitch).
+	// lock targetPitch to 90-(alt:radar^0.385).
+	// lock targetDirection to 90.
+	// lock steering to heading(targetDirection, targetPitch).
+
+	//Declare OldThrust variable for autostage
+	declare global OldThrust to ship:availableThrust.
 }
 
 function Main {
 	//Code here will run until shutdown sequence
+	if RocketStage = 1 {
+		//Auto Stage
+		if ship:availableThrust < (oldThrust-1) {
+			DoSafeStage(). wait 1.
+			set OldThrust to ship:availablethrust.
+		}
 
+		if apoapsis >= 100000 {
+			RocketStageShutdown.
+		}
+	} else if RocketStage = 2 {
+		
+	}
 }
 
 function MainGUI {
@@ -27,6 +45,9 @@ function MainGUI {
 
 function End {
 	//Code here will run when program ends
+	lock throttle to 0.
+	lock steering to prograde.
+
 }
 
 //Recurring Functions
@@ -38,10 +59,6 @@ function DoSafeStage {
 
 //DO NOT TOUCH THESE FUNCTIONS
 function DEFINE {
-
-	//RocketStage is used to chage between the rocket phases (ie. ignition, launch, orbit...)
-	set RocketStage to 0. 
-
 	//Function Start happens at Stage 0 and does never repeat.
 	Start(). 
 	GUIHeader().
@@ -53,6 +70,9 @@ function DEFINE {
 		MainGUI().
 	}
 	End().
+	clearScreen.
+	print "novamind.ks has exited with code 0".
+	until false.
 }
 function GUIHeader {
 	clearScreen.
