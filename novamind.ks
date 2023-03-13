@@ -47,13 +47,62 @@ function Main {
 		//This stage doesn't have exit condition as it's only run once
 		RocketStageIncrement().
 	} else if RocketStage = 4 {
-		// TODO: Execute maneuver
-		
+		//Circularize maneuver
+		local Circ is list(time:seconds + 30, 0, 0, 0).
+		until false {
+			local OldScore is Score(Circ).
+			set Circ to Improve(Circ).
+			if OldScore <= Score(Circ) {
+				break.
+			}
+			ExecuteManuever(Circ).
+		}
+
 		//Stage exit condition
 		if false {
 			RocketStageIncrement().
 		}
 	}
+}
+
+function Score { 
+	parameter data.
+	//Creates maneuver from imput
+	local mnv is node(data[0], data[1], data [2], data[3]). 
+	//Adds maneuver to flight plan
+	add mnv.
+	//Finds eccentricity
+	//Lower = better			
+	local ManeuverScore is mnv:orbit:eccentricity.
+	//Removes maneuver from flight plan
+	remove mnv.
+	return ManeuverScore.
+}
+
+function Improve {
+	parameter data.
+	local ScoreToBeat is Score(data).
+
+	local BestCandidate is data.
+	local Candidates is list (
+		list(data[0] + 1, data[1], data [2], data[3]),
+		list(data[0] - 1, data[1], data [2], data[3]),
+		list(data[0], data[1] + 1, data [2], data[3]),
+		list(data[0], data[1] - 1, data [2], data[3]),
+		list(data[0], data[1], data [2] + 1, data[3]),
+		list(data[0], data[1], data [2] - 1, data[3]),
+		list(data[0], data[1], data [2], data[3] + 1),
+		list(data[0], data[1], data [2], data[3] - 1)
+	).
+	for Candidate in Candidates {
+		local sc is Score(Candidate).
+		if sc < ScoreToBeat {
+			set ScoreToBeat to sc.
+			set BestCandidate to Candidate.
+		}
+	}
+	
+	return BestCandidate.
 }
 
 function MainGUI {
@@ -83,6 +132,7 @@ function End {
 }
 
 //Recurring Functions
+
 function DoSafeStage {
 	//Waits until Staging is safe 
 	wait until stage:ready.
@@ -98,10 +148,10 @@ function AutoStage {
 }
 
 function ExecuteManuever {
-	parameter utime, radial, normal, mnvprograde.
-	local mnv is node (utime, radial, normal, mnvprograde).
+	parameter mnvList.
+	local mnv is node (mnvList[0], mnvList[1], mnvList[2], mnvList[3]).
 	add mnv. //Add maneuver to Flight Plan
-	local StartTime is time:seconds + mnv:eta - ManueverBurnTime(mnv)/2. //Calculate start time
+	local StartTime is time:seconds + mnv:eta - ManeuverBurnTime(mnv)/2. //Calculate start time
 	wait until time:seconds > StartTime - 10.
 	lock steering to mnv:burnvector. //Lock steering at maneuver target
 	wait until time:seconds > StartTime.
@@ -113,8 +163,20 @@ function ExecuteManuever {
 
 function ManeuverBurnTime {
 	parameter mnv.
+	local isp is 0.
 
-	return 10.
+	list engines in myEngines.
+	for en in myEngines {
+		if en:ignition and not en:flameout {
+			set isp to isp + (en:isp * (en:maxThrust/ship:maxThrust)).
+		}
+	}
+
+	local mf is ship:mass / constant():e^(mnv:deltaV:mag / isp * constant():g0).
+	local FuelFlow is ship:maxThrust / (isp*constant():g0). 
+	local ManeuverTime is (ship:mass - mf) / fuelFlow.
+
+	return ManeuverTime.
 }
 	
 function IsManeuverComplete {
