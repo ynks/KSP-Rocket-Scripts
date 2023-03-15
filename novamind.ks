@@ -142,6 +142,7 @@ function DoSafeStage {
 function AutoStage {
 	// Cambia la etapa del cohete si se acaba el combustible
 	if ship:availableThrust < (oldThrust-1) {
+		wait 0.5.
 		DoSafeStage(). wait 1.
 		set OldThrust to ship:availablethrust.
 	}
@@ -149,7 +150,7 @@ function AutoStage {
 
 function ExecuteManuever {
 	parameter mnvList.
-	local mnv is node (mnvList[0], mnvList[1], mnvList[2], mnvList[3]).
+	local mnv is node(mnvList[0], mnvList[1], mnvList[2], mnvList[3]).
 	add mnv. //Add maneuver to Flight Plan
 	local StartTime is time:seconds + mnv:eta - ManeuverBurnTime(mnv)/2. //Calculate start time
 	wait until time:seconds > StartTime - 10.
@@ -164,6 +165,7 @@ function ExecuteManuever {
 function ManeuverBurnTime {
 	parameter mnv.
 	local isp is 0.
+	local g0 is 9.80665.
 
 	list engines in myEngines.
 	for en in myEngines {
@@ -172,8 +174,8 @@ function ManeuverBurnTime {
 		}
 	}
 
-	local mf is ship:mass / constant():e^(mnv:deltaV:mag / isp * constant():g0).
-	local FuelFlow is ship:maxThrust / (isp*constant():g0). 
+	local mf is ship:mass / (constant():e)^(mnv:deltaV:mag / (isp*g0)).
+	local FuelFlow is ship:maxThrust / (isp*g0). 
 	local ManeuverTime is (ship:mass - mf) / fuelFlow.
 
 	return ManeuverTime.
