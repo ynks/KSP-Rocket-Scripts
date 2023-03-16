@@ -166,18 +166,28 @@ function ManeuverBurnTime {
 	parameter mnv.
 	local isp is 0.
 	local g0 is 9.80665.
+    local ManeuverTime is 0.
 
 	list engines in myEngines.
+    print myEngines.
 	for en in myEngines {
 		if en:ignition and not en:flameout {
 			set isp to isp + (en:isp * (en:maxThrust/ship:maxThrust)).
 		}
-	}
-
-	local mf is ship:mass / (constant():e)^(mnv:deltaV:mag / (isp*g0)).
-	local FuelFlow is ship:maxThrust / (isp*g0). 
-	local ManeuverTime is (ship:mass - mf) / fuelFlow.
-
+	} 
+    
+    until not(isp = 0){
+        DoSafeStage().
+    }
+    
+    if not(isp = 0) {
+        local mf is ship:mass / (constant():e)^(mnv:deltaV:mag / (isp*g0)).
+	    local FuelFlow is ship:maxThrust / (isp*g0). 
+	    set ManeuverTime to (ship:mass - mf) / fuelFlow.
+    } else {
+        print "Specific Impulse = 0".
+    }
+	
 	return ManeuverTime.
 }
 	
