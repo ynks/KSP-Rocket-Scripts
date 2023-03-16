@@ -8,6 +8,7 @@ function Start {
 	//Launch statement
 	lock throttle to 1.
 	lock steering to srfPrograde.
+	SetTimeWarp("PHYSICS", 3).
 	wait 1.
 	DoSafeStage().
 
@@ -39,6 +40,7 @@ function Main {
 		}
 	} else if RocketStage = 3 {
 		//Prepare rocket to start orbit
+		SetTimeWarp("same", 0).
 		lock throttle to 0.
 		lock steering to prograde.
 		wait 1.
@@ -58,10 +60,12 @@ function Main {
 		}
 		ExecuteManuever(Circ).
 
-		//Stage exit condition
-		if false {
-			RocketStageIncrement().
-		}
+		//This stage doesn't have exit condition as it's only run once
+		RocketStageShutdown().
+	// } else if RocketStage = 5 {
+	// 	if false {
+	// 		RocketStageShutdown().
+	// 	}
 	}
 }
 
@@ -78,6 +82,38 @@ function Score {
 	remove mnv.
 	return ManeuverScore.
 }
+
+function MainGUI {
+	//Code here is used for the Console GUI
+	print "Fase " + RocketStage.
+	if RocketStage = 1 {
+		print "Escapando de la atmósfera".
+		print "Altura:   " + floor(alt:radar).
+		print "Apoapsis: " + floor(apoapsis).
+	} else if RocketStage = 2 {
+		print "Iniciando trayectoria de giro".
+		print "Altura:   " + floor(alt:radar).
+		print "Apoapsis: " + floor(apoapsis).
+	} else if RocketStage = 3 {
+		print "Apoapsis conseguida".
+	} else if RocketStage = 4 {
+		print "Consiguiendo órbita".
+	} else if RocketStage = 5 {
+		print "En orbita".
+		print "Presione RCS para salir de órbita".
+	}
+	
+}
+
+function End {
+	//Code here will run when program ends
+	lock steering to retrograde.
+	lock throttle to 1.
+	wait until ship:maxThrust = 0.
+	DoSafeStage.
+}
+
+//Recurring Functions
 
 function Improve {
 	parameter data.
@@ -104,34 +140,6 @@ function Improve {
 	
 	return BestCandidate.
 }
-
-function MainGUI {
-	//Code here is used for the Console GUI
-	print "Fase " + RocketStage.
-	if RocketStage = 1 {
-		print "Escapando de la atmósfera".
-		print "Altura:   " + floor(alt:radar).
-		print "Apoapsis: " + floor(apoapsis).
-	} else if RocketStage = 2 {
-		print "Iniciando trayectoria de giro".
-		print "Altura:   " + floor(alt:radar).
-		print "Apoapsis: " + floor(apoapsis).
-	} else if RocketStage = 3 {
-		print "Apoapsis conseguida".
-	} else if RocketStage = 4 {
-		print "Consiguiendo órbita".
-	}
-	
-}
-
-function End {
-	//Code here will run when program ends
-	lock throttle to 0.
-	lock steering to prograde.
-
-}
-
-//Recurring Functions
 
 function DoSafeStage {
 	//Waits until Staging is safe 
@@ -194,7 +202,7 @@ function ManeuverBurnTime {
 	
 function IsManeuverComplete {
 	parameter mnv.
-	if not(OriginalVector = -1){
+	if (OriginalVector = -1) {
 		set OriginalVector to mnv:burnvector.
 	}
 	local CurrentVector is mnv:burnvector.
@@ -215,8 +223,8 @@ function DEFINE {
 	until RocketStage = 0 {
 		//Function Main repeats until Stage is reset to 0.
 		GUIHeader().
-		Main().
 		MainGUI().
+		Main().
 	}
 	End().
 	clearScreen.
@@ -233,4 +241,13 @@ function RocketStageIncrement {
 }
 function RocketStageShutdown {
 	set RocketStage to 0.
+}
+function SetTimeWarp {
+	parameter TWMode, TWTime.
+	if TWMode = "PHYSICS" or TWMODE = "RAILS" {
+		set kuniverse:timewarp:mode to TWMode.
+	} else {
+		print "SetTimeWarp error".
+	}
+	set kuniverse:timewarp:warp to TWTime.
 }
