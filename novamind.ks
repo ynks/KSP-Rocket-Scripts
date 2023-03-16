@@ -55,8 +55,8 @@ function Main {
 			if OldScore <= Score(Circ) {
 				break.
 			}
-			ExecuteManuever(Circ).
 		}
+		ExecuteManuever(Circ).
 
 		//Stage exit condition
 		if false {
@@ -159,6 +159,7 @@ function ExecuteManuever {
 	lock throttle to 1.
 	wait until IsManeuverComplete(mnv).
 	lock throttle to 0.
+	unlock steering.
 	remove mnv. //Removes maneuver from Flight Plan
 }
 
