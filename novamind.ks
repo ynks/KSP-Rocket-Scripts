@@ -107,10 +107,10 @@ function MainGUI {
 
 function End {
 	//Code here will run when program ends
-	lock steering to retrograde.
-	lock throttle to 1.
-	wait until ship:maxThrust = 0.
-	DoSafeStage.
+	// lock steering to retrograde.
+	// lock throttle to 1.
+	// wait until ship:maxThrust = 0.
+	// DoSafeStage.
 }
 
 //Recurring Functions
@@ -165,7 +165,9 @@ function ExecuteManuever {
 	lock steering to mnv:burnvector. //Lock steering at maneuver target
 	wait until time:seconds > StartTime.
 	lock throttle to 1.
+	SetTimeWarp("PHYSICS", 3).
 	wait until IsManeuverComplete(mnv).
+	SetTimeWarp("PHYSICS", 0).
 	lock throttle to 0.
 	unlock steering.
 	remove mnv. //Removes maneuver from Flight Plan
